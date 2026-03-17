@@ -17,7 +17,7 @@ A Hacker News client with AI-powered discussion summaries built with Next.js, Po
 
 - **Frontend & Backend**: Next.js 14+ (App Router, TypeScript)
 - **Database**: PostgreSQL with Prisma ORM
-- **AI**: OpenAI GPT-4o-mini
+- **AI**: Mistral AI (mistral-small-latest)
 - **Data Fetching**: TanStack React Query
 - **Styling**: Tailwind CSS
 - **Deployment**: Docker Compose
@@ -26,10 +26,11 @@ A Hacker News client with AI-powered discussion summaries built with Next.js, Po
 
 ### Prerequisites
 
-- Docker and Docker Compose
+- Docker and Docker Compose (for containerized setup)
+- MySQL 8.0+ (for local development)
 - OpenAI API key (get one at https://platform.openai.com/)
 
-### Setup
+### Setup with Local MySQL
 
 1. Clone the repository:
 ```bash
@@ -37,42 +38,42 @@ git clone <your-repo-url>
 cd hacker-news-reader
 ```
 
-2. Create a `.env` file in the root directory:
+2. Create a `.env` file:
 ```env
-DATABASE_URL="postgresql://postgres:postgres@postgres:5432/hackernews?schema=public"
+DATABASE_URL="mysql://root:@localhost:3306/hackernews"
 OPENAI_API_KEY="your-openai-api-key-here"
 ```
 
-3. Start the application:
+3. Create the database and tables:
+```bash
+npx prisma db push
+```
+
+4. Install dependencies:
+```bash
+npm install
+```
+
+5. Start the development server:
+```bash
+npm run dev
+```
+
+The application will be available at http://localhost:3000
+
+### Setup with Docker
+
+1. Create a `.env` file with your OpenAI API key:
+```env
+OPENAI_API_KEY="your-openai-api-key-here"
+```
+
+2. Start everything:
 ```bash
 docker-compose up
 ```
 
 The application will be available at http://localhost:3000
-
-## Development Setup
-
-If you want to run locally without Docker:
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Start PostgreSQL (or use Docker):
-```bash
-docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=hackernews postgres:16-alpine
-```
-
-3. Run database migrations:
-```bash
-npx prisma migrate dev
-```
-
-4. Start the development server:
-```bash
-npm run dev
-```
 
 ## Architecture Decisions
 

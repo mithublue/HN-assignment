@@ -1,19 +1,19 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: hn-postgres
+  mysql:
+    image: mysql:8.0-alpine
+    container_name: hn-mysql
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: hackernews
+      MYSQL_ROOT_PASSWORD: ""
+      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+      MYSQL_DATABASE: hackernews
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -26,12 +26,12 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/hackernews?schema=public
+      - DATABASE_URL=mysql://root:@mysql:3306/hackernews
       - OPENAI_API_KEY=${OPENAI_API_KEY}
     depends_on:
-      postgres:
+      mysql:
         condition: service_healthy
-    command: sh -c "npx prisma migrate deploy && npm run start"
+    command: sh -c "npx prisma db push && npm run start"
 
 volumes:
-  postgres_data:
+  mysql_data:

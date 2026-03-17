@@ -31,6 +31,7 @@ export interface Comment extends HNItem {
   parent: number;
   text: string;
   time: number;
+  replies?: Comment[];
 }
 
 export interface Bookmark {

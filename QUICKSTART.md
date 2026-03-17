@@ -4,8 +4,7 @@
 
 1. Create `.env` file:
 ```bash
-echo 'DATABASE_URL="postgresql://postgres:postgres@postgres:5432/hackernews?schema=public"' > .env
-echo 'OPENAI_API_KEY="your-key-here"' >> .env
+echo 'OPENAI_API_KEY="your-key-here"' > .env
 ```
 
 2. Start everything:
@@ -15,28 +14,24 @@ docker-compose up
 
 3. Open http://localhost:3000
 
-## Option 2: Local Development
+## Option 2: Local Development with MySQL
 
-1. Install dependencies:
+1. Make sure MySQL is running (default: root user, no password)
+
+2. Create `.env`:
+```bash
+echo 'DATABASE_URL="mysql://root:@localhost:3306/hackernews"' > .env
+echo 'OPENAI_API_KEY="your-key-here"' >> .env
+```
+
+3. Install dependencies:
 ```bash
 npm install
 ```
 
-2. Start PostgreSQL:
-```bash
-docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=hackernews postgres:16-alpine
-```
-
-3. Create `.env`:
-```bash
-echo 'DATABASE_URL="postgresql://postgres:postgres@localhost:5432/hackernews?schema=public"' > .env
-echo 'OPENAI_API_KEY="your-key-here"' >> .env
-```
-
-4. Setup database:
+4. Create database and tables:
 ```bash
 npx prisma db push
-npx prisma generate
 ```
 
 5. Start dev server:
@@ -56,10 +51,11 @@ npm run dev
 
 ## Troubleshooting
 
-### Port 5432 already in use
+### MySQL connection error
 ```bash
-# Stop existing PostgreSQL
-docker stop $(docker ps -q --filter ancestor=postgres)
+# Make sure MySQL is running
+# Default: root user, no password
+# Database: hackernews (auto-created)
 ```
 
 ### Port 3000 already in use
@@ -68,11 +64,11 @@ docker stop $(docker ps -q --filter ancestor=postgres)
 npm run dev -- -p 3001
 ```
 
-### Database connection error
+### Database sync error
 ```bash
-# Reset database
-docker-compose down -v
-docker-compose up
+# Regenerate Prisma client and sync schema
+npx prisma generate
+npx prisma db push
 ```
 
 ### Prisma errors

@@ -1,8 +1,8 @@
-import OpenAI from 'openai';
+import { Mistral } from '@mistralai/mistralai';
 import type { Comment } from './types';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const mistral = new Mistral({
+  apiKey: process.env.MISTRAL_API_KEY,
 });
 
 export interface DiscussionSummary {
@@ -64,8 +64,8 @@ Respond in JSON format:
 }`;
 
   try {
-    const response = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
+    const response = await mistral.chat.complete({
+      model: 'mistral-small-latest',
       messages: [
         {
           role: 'system',
@@ -76,17 +76,19 @@ Respond in JSON format:
           content: prompt,
         },
       ],
-      response_format: { type: 'json_object' },
-      temperature: 0.7,
-      max_tokens: 500,
+      responseFormat: {
+        type: 'json_object',
+      },
     });
 
-    const content = response.choices[0].message.content;
+    const content = response.choices?.[0]?.message?.content;
     if (!content) {
-      throw new Error('No response from OpenAI');
+      throw new Error('No response from Mistral');
     }
 
-    const result = JSON.parse(content) as DiscussionSummary;
+    // Handle both string and ContentChunk[] responses
+    const contentStr = typeof content === 'string' ? content : JSON.stringify(content);
+    const result = JSON.parse(contentStr) as DiscussionSummary;
     return result;
   } catch (error) {
     console.error('Error summarizing discussion:', error);
