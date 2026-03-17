@@ -26,8 +26,10 @@ export default function BookmarksPage() {
     mutationFn: async (id: string) => {
       await axios.delete(`/api/bookmarks/${id}`);
     },
-    onSuccess: () => {
+    onSuccess: (_, bookmarkId) => {
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+      // Also invalidate all bookmark queries to update the list page
+      queryClient.invalidateQueries({ queryKey: ['bookmark'] });
     },
   });
 

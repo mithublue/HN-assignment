@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axios from 'axios';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
@@ -9,6 +9,7 @@ import type { Story, StoryType } from '@/lib/types';
 
 export default function Home() {
   const [storyType, setStoryType] = useState<StoryType>('top');
+  const queryClient = useQueryClient();
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['stories', storyType],
@@ -87,44 +88,116 @@ export default function Home() {
         {data && (
           <div className="space-y-4">
             {data.map((story, index) => (
-              <div key={story.id} className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
-                <div className="flex items-start gap-4">
-                  <span className="text-gray-500 font-mono text-sm">{index + 1}.</span>
-                  <div className="flex-1">
-                    <Link
-                      href={`/story/${story.id}`}
-                      className="text-lg font-medium text-gray-900 hover:text-orange-600"
-                    >
-                      {story.title}
-                    </Link>
-                    {story.url && (
-                      <a
-                        href={story.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="ml-2 text-sm text-gray-500 hover:text-gray-700"
-                      >
-                        ({new URL(story.url).hostname})
-                      </a>
-                    )}
-                    <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
-                      <span>{story.score} points</span>
-                      <span>by {story.by}</span>
-                      <span>{formatDistanceToNow(new Date(story.time * 1000), { addSuffix: true })}</span>
-                      <Link
-                        href={`/story/${story.id}`}
-                        className="text-orange-600 hover:text-orange-700"
-                      >
-                        {story.descendants || 0} comments
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <StoryCard key={story.id} story={story} index={index} queryClient={queryClient} />
             ))}
           </div>
         )}
       </main>
+    </div>
+  );
+}
+
+interface StoryCardProps {
+  story: Story;
+  index: number;
+  queryClient: ReturnType<typeof useQueryClient>;
+}
+
+function StoryCard({ story, index, queryClient }: StoryCardProps) {
+  const { data: bookmarkData } = useQuery({
+    queryKey: ['bookmark', story.id],
+    queryFn: async () => {
+      const res = await axios.get(`/api/bookmarks/${story.id}`);
+      return res.data.bookmark;
+    },
+    refetchOnWindowFocus: true,
+    staleTime: 0,
+  });
+
+  const bookmarkMutation = useMutation({
+    mutationFn: async () => {
+      const res = await axios.post('/api/bookmarks', {
+        storyId: story.id,
+        title: story.title,
+        url: story.url || null,
+        author: story.by,
+        points: story.score,
+        commentCount: story.descendants || 0,
+      });
+      return res.data.bookmark;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmark', story.id] });
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    },
+  });
+
+  const unbookmarkMutation = useMutation({
+    mutationFn: async () => {
+      if (!bookmarkData) return;
+      await axios.delete(`/api/bookmarks/${bookmarkData.id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmark', story.id] });
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    },
+  });
+
+  return (
+    <div className="bg-white p-4 rounded-lg shadow hover:shadow-md transition-shadow">
+      <div className="flex items-start gap-4">
+        <span className="text-gray-500 font-mono text-sm">{index + 1}.</span>
+        <div className="flex-1">
+          <Link
+            href={`/story/${story.id}`}
+            className="text-lg font-medium text-gray-900 hover:text-orange-600"
+          >
+            {story.title}
+          </Link>
+          {story.url && (
+            <a
+              href={story.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="ml-2 text-sm text-gray-500 hover:text-gray-700"
+            >
+              ({new URL(story.url).hostname})
+            </a>
+          )}
+          <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
+            <span>{story.score} points</span>
+            <span>by {story.by}</span>
+            <span>{formatDistanceToNow(new Date(story.time * 1000), { addSuffix: true })}</span>
+            <Link
+              href={`/story/${story.id}`}
+              className="text-orange-600 hover:text-orange-700"
+            >
+              {story.descendants || 0} comments
+            </Link>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          {bookmarkData ? (
+            <button
+              onClick={() => unbookmarkMutation.mutate()}
+              disabled={unbookmarkMutation.isPending}
+              className="px-3 py-1 bg-gray-200 text-gray-700 rounded text-sm hover:bg-gray-300 disabled:opacity-50 whitespace-nowrap"
+              title="Remove bookmark"
+            >
+              {unbookmarkMutation.isPending ? '...' : '★'}
+            </button>
+          ) : (
+            <button
+              onClick={() => bookmarkMutation.mutate()}
+              disabled={bookmarkMutation.isPending}
+              className="px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600 disabled:opacity-50 whitespace-nowrap"
+              title="Add bookmark"
+            >
+              {bookmarkMutation.isPending ? '...' : '☆'}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
