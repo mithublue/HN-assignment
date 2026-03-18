@@ -24,59 +24,47 @@ This project has TWO example environment files:
 
 ### Option 1 — Docker (Recommended)
 
-No local Node.js or MySQL needed. Docker handles everything.
+## Run with Docker Compose
 
-**Prerequisites:** [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running.
+This project can be run with Docker Compose using two containers:
 
-**Step 1 — Clone the repo**
-```bash
-git clone <repo-url>
-cd hacker-news-reader
-```
+- `app` — Node.js application
+- `db` — MySQL 8.0 database
 
-**Step 2 — Create `.env` from the Docker template**
-```bash
-cp .env.docker.example .env
-```
+### Prerequisites
 
-**Step 3 — Add your Mistral API key**
+Make sure these are installed on your machine:
 
-Open `.env` and replace the placeholder:
+- Docker
+- Docker Compose
+
+### Step 1 — Create the Docker environment file
+
+Create a file named `.env.docker` in the project root:
+
 ```env
-MISTRAL_API_KEY=your_actual_key_here
+DATABASE_URL="mysql://appuser:apppass@db:3306/hackernews"
+DATABASE_USER="appuser"
+DATABASE_PASSWORD="apppass"
+DATABASE_NAME="hackernews"
+DATABASE_HOST="db"
+DATABASE_PORT=3306
+MISTRAL_API_KEY="your_key_here"
 ```
 
-Get a free key at https://console.mistral.ai/
+Start the containers:
 
-> **Why only 1 variable?** All database credentials are hardcoded in `docker-compose.yml` because Docker creates its own MySQL container. You only need to provide the Mistral API key.
-
-**Step 4 — Start everything**
-```bash
-docker-compose up
 ```
-
-Docker will pull the pre-built app image from Docker Hub and start MySQL automatically. No build step needed.
-
-First run downloads the image (~500MB). Subsequent starts are instant.
-
-**Step 5 — Open the app**
-
+docker compose up --build
+```
+Open the application:
+```
 http://localhost:3000
-
-**To stop:**
-```bash
-docker-compose down
 ```
+To stop the container:
 
-**To rebuild after code changes:**
-```bash
-# Rebuild and push to Docker Hub
-docker build -t YOUR_DOCKERHUB_USERNAME/hacker-news-reader:latest .
-docker push YOUR_DOCKERHUB_USERNAME/hacker-news-reader:latest
-
-# Then pull and restart
-docker-compose pull
-docker-compose up
+```
+docker compose down
 ```
 
 ---
