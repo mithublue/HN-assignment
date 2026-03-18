@@ -111,13 +111,20 @@ export default function StoryPage({ params }: { params: Promise<{ id: string }> 
       });
       return res.data.bookmark;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookmark', id] });
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['bookmark', id] });
+      const previous = queryClient.getQueryData(['bookmark', id]);
+      queryClient.setQueryData(['bookmark', id], { id: 'optimistic', storyId: id });
+      return { previous };
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _vars, context) => {
+      queryClient.setQueryData(['bookmark', id], context?.previous);
       const err = error as { response?: { data?: unknown }; message?: string };
       console.error('Bookmark error:', err.response?.data || err.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmark', id] });
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
     },
   });
 
@@ -126,13 +133,20 @@ export default function StoryPage({ params }: { params: Promise<{ id: string }> 
       if (!bookmarkData) return;
       await axios.delete(`/api/bookmarks/${bookmarkData.id}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bookmark', id] });
-      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['bookmark', id] });
+      const previous = queryClient.getQueryData(['bookmark', id]);
+      queryClient.setQueryData(['bookmark', id], null);
+      return { previous };
     },
-    onError: (error: unknown) => {
+    onError: (error: unknown, _vars, context) => {
+      queryClient.setQueryData(['bookmark', id], context?.previous);
       const err = error as { response?: { data?: unknown }; message?: string };
       console.error('Unbookmark error:', err.response?.data || err.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['bookmark', id] });
+      queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
     },
   });
 

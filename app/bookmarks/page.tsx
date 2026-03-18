@@ -26,9 +26,22 @@ export default function BookmarksPage() {
     mutationFn: async (id: string) => {
       await axios.delete(`/api/bookmarks/${id}`);
     },
-    onSuccess: (_, bookmarkId) => {
+    onMutate: async (deletedId: string) => {
+      await queryClient.cancelQueries({ queryKey: ['bookmarks'] });
+      const previous = queryClient.getQueryData(['bookmarks', search]);
+      // Optimistically remove from list immediately
+      queryClient.setQueryData(['bookmarks', search], (old: Bookmark[] | undefined) =>
+        old ? old.filter((b) => b.id !== deletedId) : []
+      );
+      return { previous };
+    },
+    onError: (_err, _id, context) => {
+      // Roll back on failure
+      queryClient.setQueryData(['bookmarks', search], context?.previous);
+    },
+    onSettled: (_data, _err, deletedId) => {
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
-      // Also invalidate all bookmark queries to update the list page
+      // Also clear the per-story bookmark cache so the list page updates
       queryClient.invalidateQueries({ queryKey: ['bookmark'] });
     },
   });

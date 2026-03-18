@@ -126,7 +126,19 @@ function StoryCard({ story, index, queryClient }: StoryCardProps) {
       });
       return res.data.bookmark;
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      // Cancel any in-flight refetches so they don't overwrite our optimistic update
+      await queryClient.cancelQueries({ queryKey: ['bookmark', story.id] });
+      const previous = queryClient.getQueryData(['bookmark', story.id]);
+      // Optimistically set as bookmarked immediately
+      queryClient.setQueryData(['bookmark', story.id], { id: 'optimistic', storyId: story.id });
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      // Roll back on failure
+      queryClient.setQueryData(['bookmark', story.id], context?.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['bookmark', story.id] });
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
     },
@@ -137,7 +149,17 @@ function StoryCard({ story, index, queryClient }: StoryCardProps) {
       if (!bookmarkData) return;
       await axios.delete(`/api/bookmarks/${bookmarkData.id}`);
     },
-    onSuccess: () => {
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['bookmark', story.id] });
+      const previous = queryClient.getQueryData(['bookmark', story.id]);
+      // Optimistically clear bookmark immediately
+      queryClient.setQueryData(['bookmark', story.id], null);
+      return { previous };
+    },
+    onError: (_err, _vars, context) => {
+      queryClient.setQueryData(['bookmark', story.id], context?.previous);
+    },
+    onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['bookmark', story.id] });
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
     },
