@@ -101,7 +101,7 @@ export default function BookmarksPage() {
                       <span>{bookmark.points} points</span>
                       <span>by {bookmark.author}</span>
                       <span>{bookmark.commentCount} comments</span>
-                      <span>
+                      <span suppressHydrationWarning>
                         Saved {formatDistanceToNow(new Date(bookmark.createdAt), { addSuffix: true })}
                       </span>
                     </div>

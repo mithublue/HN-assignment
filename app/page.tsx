@@ -167,7 +167,7 @@ function StoryCard({ story, index, queryClient }: StoryCardProps) {
           <div className="mt-2 flex items-center gap-4 text-sm text-gray-600">
             <span>{story.score} points</span>
             <span>by {story.by}</span>
-            <span>{formatDistanceToNow(new Date(story.time * 1000), { addSuffix: true })}</span>
+            <span suppressHydrationWarning>{formatDistanceToNow(new Date(story.time * 1000), { addSuffix: true })}</span>
             <Link
               href={`/story/${story.id}`}
               className="text-orange-600 hover:text-orange-700"

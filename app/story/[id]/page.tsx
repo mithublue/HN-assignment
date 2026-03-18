@@ -20,7 +20,7 @@ function CommentItem({ comment, depth = 0 }: CommentItemProps) {
       <div className="flex items-center gap-2 text-sm text-gray-500 mb-2">
         <span className="font-medium text-gray-700">{comment.by}</span>
         <span>·</span>
-        <span>{formatDistanceToNow(new Date(comment.time * 1000), { addSuffix: true })}</span>
+        <span suppressHydrationWarning>{formatDistanceToNow(new Date(comment.time * 1000), { addSuffix: true })}</span>
         <button
           onClick={() => setCollapsed(!collapsed)}
           className="ml-auto text-xs text-gray-400 hover:text-gray-600"
@@ -115,8 +115,9 @@ export default function StoryPage({ params }: { params: Promise<{ id: string }> 
       queryClient.invalidateQueries({ queryKey: ['bookmark', id] });
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
     },
-    onError: (error: any) => {
-      console.error('Bookmark error:', error.response?.data || error.message);
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: unknown }; message?: string };
+      console.error('Bookmark error:', err.response?.data || err.message);
     },
   });
 
@@ -129,8 +130,9 @@ export default function StoryPage({ params }: { params: Promise<{ id: string }> 
       queryClient.invalidateQueries({ queryKey: ['bookmark', id] });
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] });
     },
-    onError: (error: any) => {
-      console.error('Unbookmark error:', error.response?.data || error.message);
+    onError: (error: unknown) => {
+      const err = error as { response?: { data?: unknown }; message?: string };
+      console.error('Unbookmark error:', err.response?.data || err.message);
     },
   });
 
@@ -193,7 +195,7 @@ export default function StoryPage({ params }: { params: Promise<{ id: string }> 
           <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600 mb-4">
             <span>{storyData.score} points</span>
             <span>by {storyData.by}</span>
-            <span>{formatDistanceToNow(new Date(storyData.time * 1000), { addSuffix: true })}</span>
+            <span suppressHydrationWarning>{formatDistanceToNow(new Date(storyData.time * 1000), { addSuffix: true })}</span>
             <span>{storyData.descendants || 0} comments</span>
           </div>
           <div className="flex flex-wrap gap-3">
