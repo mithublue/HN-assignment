@@ -1,91 +1,86 @@
-# Docker Quick Start
+# Docker Quick Start (5 Minutes)
 
-Get the Hacker News Reader running in under 2 minutes!
+Get the Hacker News Reader running with Docker in 5 simple steps.
+
+---
 
 ## Prerequisites
 
-- Docker Desktop installed and running
-- That's it! No Node.js, MySQL, or other dependencies needed.
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installed and running
+- A [Mistral AI API key](https://console.mistral.ai/) (free tier available)
 
-## Start the Application
+---
 
+## 5 Steps to Run
+
+### 1️⃣ Clone the repo
 ```bash
-# Navigate to project directory
+git clone <repo-url>
 cd hacker-news-reader
+```
 
-# Start everything
+### 2️⃣ Create `.env` file
+```bash
+cp .env.docker.example .env
+```
+
+### 3️⃣ Add your API key
+Open `.env` and replace the placeholder:
+```env
+MISTRAL_API_KEY=your_actual_mistral_key_here
+```
+
+### 4️⃣ Start Docker
+```bash
 docker-compose up
 ```
 
-Wait for the output to show:
-```
-hn-app    | ✓ Ready in 2.5s
-hn-app    | - Local:        http://localhost:3000
-```
+Docker pulls the pre-built image from Docker Hub. No build step needed.
 
-## Access the Application
-
-Open your browser and go to:
+### 5️⃣ Open the app
 ```
 http://localhost:3000
 ```
 
-## Stop the Application
+---
 
-Press `Ctrl+C` in the terminal, then:
+## That's It!
+
+The app is now running with:
+- MySQL database (port 3306)
+- Next.js app (port 3000)
+- Automatic schema setup
+- Persistent data storage
+
+---
+
+## Common Commands
+
+**Stop:**
 ```bash
 docker-compose down
 ```
 
-## Common Commands
-
+**Restart:**
 ```bash
-# Start in background (detached mode)
-docker-compose up -d
-
-# View logs
-docker-compose logs -f app
-
-# Restart after code changes
-docker-compose up --build
-
-# Stop and remove everything (including database)
-docker-compose down -v
-
-# Check status
-docker-compose ps
+docker-compose up
 ```
 
-## What's Running?
-
-- **App**: http://localhost:3000 (Next.js application)
-- **MySQL**: localhost:3306 (database)
-
-## Troubleshooting
-
-**Port 3000 already in use?**
+**Rebuild after code changes:**
 ```bash
-# Kill the process
-npx kill-port 3000
-# Or change the port in docker-compose.yml
-```
-
-**Database issues?**
-```bash
-# Reset everything
-docker-compose down -v
 docker-compose up --build
 ```
 
-**Still having issues?**
-See [DOCKER_SETUP.md](./DOCKER_SETUP.md) for detailed troubleshooting.
-
-## Next Steps
-
-- Read [README.md](./README.md) for features and architecture
-- Check [DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md) to start coding
-- Review [DOCKER_SETUP.md](./DOCKER_SETUP.md) for advanced Docker usage
+**Fresh start (wipe database):**
+```bash
+docker-compose down -v
+docker-compose up --build
+```
 
 ---
 
-That's it! You're ready to explore the application. 🎉
+## Need Help?
+
+- **Detailed guide:** [DOCKER_COMPLETE_GUIDE.md](./DOCKER_COMPLETE_GUIDE.md)
+- **Troubleshooting:** [DOCKER_VERIFICATION.md](./DOCKER_VERIFICATION.md)
+- **Architecture:** [README.md](./README.md)

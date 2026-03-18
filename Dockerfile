@@ -1,104 +1,85 @@
 # =============================================================================
 # Multi-stage Dockerfile for Next.js Hacker News Reader
 # =============================================================================
-# This Dockerfile uses a multi-stage build approach to create an optimized
-# production image. It includes Prisma ORM setup and Next.js build process.
+# Stage 1 (base)   — shared Node 20 Alpine base
+# Stage 2 (deps)   — install all npm dependencies
+# Stage 3 (builder)— generate Prisma client + build Next.js
+# Stage 4 (runner) — minimal production image
 # =============================================================================
 
 # -----------------------------------------------------------------------------
-# Stage 1: Base Image
+# Stage 1: Base
 # -----------------------------------------------------------------------------
-# Use Node.js 20 Alpine as the base image for all stages
-# Alpine is chosen for its small size (~5MB vs ~900MB for full Node image)
 FROM node:20-alpine AS base
+RUN apk add --no-cache libc6-compat
 
 # -----------------------------------------------------------------------------
 # Stage 2: Dependencies
 # -----------------------------------------------------------------------------
-# Install all dependencies needed for building the application
 FROM base AS deps
-
-# Install libc6-compat for compatibility with some npm packages on Alpine
-RUN apk add --no-cache libc6-compat
-
-# Set working directory
 WORKDIR /app
-
-# Copy package files for dependency installation
-# Copying only package files first allows Docker to cache this layer
-# if dependencies haven't changed, speeding up subsequent builds
 COPY package*.json ./
-
-# Install dependencies using npm ci (clean install)
-# npm ci is faster and more reliable than npm install for CI/CD
 RUN npm ci
 
 # -----------------------------------------------------------------------------
 # Stage 3: Builder
 # -----------------------------------------------------------------------------
-# Build the Next.js application and generate Prisma client
 FROM base AS builder
-
 WORKDIR /app
 
-# Copy node_modules from deps stage
 COPY --from=deps /app/node_modules ./node_modules
-
-# Copy all source files
 COPY . .
 
-# Generate Prisma Client
-# This creates the type-safe database client based on schema.prisma
-# The generated client will be in ./generated/prisma/ as per our schema config
+# Generate Prisma client (outputs to ./generated/prisma as per schema.prisma)
 RUN npx prisma generate
 
-# Build Next.js application
-# This creates an optimized production build in .next directory
-# The build includes:
-# - Server-side rendering (SSR) code
-# - Static pages
-# - API routes
-# - Client-side JavaScript bundles
+# Build Next.js standalone output
 RUN npm run build
 
 # -----------------------------------------------------------------------------
-# Stage 4: Production Runner
+# Stage 4: Runner
 # -----------------------------------------------------------------------------
-# Create the final production image with only necessary files
 FROM base AS runner
-
 WORKDIR /app
 
-# Set Node environment to production
-# This optimizes Node.js for production (e.g., disables dev warnings)
 ENV NODE_ENV=production
 
-# Create a non-root user for security
-# Running as non-root reduces security risks
+# Non-root user for security
 RUN addgroup --system --gid 1001 nodejs && \
     adduser --system --uid 1001 nextjs
 
-# Copy necessary files from builder stage
-# Only copy what's needed to run the app, keeping image size small
+# Next.js standalone server + static assets
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+# Prisma schema (needed by `prisma db push` at startup)
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+
+# Generated Prisma client (used by the app at runtime)
 COPY --from=builder --chown=nextjs:nodejs /app/generated ./generated
+
+# Prisma runtime engine + adapter (required by PrismaClient)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma/adapter-mariadb ./node_modules/@prisma/adapter-mariadb
 
-# Switch to non-root user
+# Prisma CLI binary (needed to run `prisma db push` at container startup)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+
+# package.json is required by the Prisma CLI to locate the project root
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+
 USER nextjs
 
-# Expose port 3000 for the Next.js application
 EXPOSE 3000
-
-# Set environment variables for Next.js server
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-# Start the Next.js production server
-# This runs the standalone server created during build
-CMD ["node", "server.js"]
+# Startup:
+# 1. Push schema to MySQL (creates/updates tables — safe to run on every start)
+#    We pass DATABASE_URL directly via the environment set in docker-compose.yml
+#    and skip prisma.config.ts (TypeScript, not available in runner) by using --schema flag.
+# 2. Start the Next.js production server
+CMD sh -c "node_modules/.bin/prisma db push --schema=./prisma/schema.prisma --skip-generate && node server.js"

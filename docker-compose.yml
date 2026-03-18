@@ -55,10 +55,12 @@ services:
   # ---------------------------------------------------------------------------
   # The main web application
   app:
-    # Build configuration
-    build:
-      context: .
-      dockerfile: Dockerfile
+    # Pre-built image from Docker Hub
+    # This allows `docker-compose up` without needing to build locally
+    # To rebuild and push a new version:
+    #   docker build -t YOUR_DOCKERHUB_USERNAME/hacker-news-reader:latest .
+    #   docker push YOUR_DOCKERHUB_USERNAME/hacker-news-reader:latest
+    image: YOUR_DOCKERHUB_USERNAME/hacker-news-reader:latest
     
     container_name: hn-app
     
@@ -81,8 +83,9 @@ services:
       - DATABASE_PORT=3306
       
       # Mistral AI API key for discussion summaries
-      # Replace with your actual key or use .env file
-      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-dzUQnfjmbH9WMp1NwGc47pkArE76cxyi}
+      # Set this in a .env file next to docker-compose.yml:
+      #   MISTRAL_API_KEY=your_key_here
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
       
       # Node environment
       - NODE_ENV=production
@@ -93,10 +96,9 @@ services:
       mysql:
         condition: service_healthy
     
-    # Startup command
-    # 1. Push database schema to MySQL (creates tables)
-    # 2. Start the Next.js production server
-    command: sh -c "npx prisma db push && node server.js"
+    # Startup is handled by the Dockerfile CMD:
+    #   1. prisma db push  — creates/updates tables using DATABASE_URL from environment
+    #   2. node server.js  — starts the Next.js production server
     
     # Restart policy
     restart: unless-stopped
