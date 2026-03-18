@@ -1,37 +1,112 @@
+# =============================================================================
+# Docker Compose Configuration for Hacker News Reader
+# =============================================================================
+# This file defines all services needed to run the application:
+# - MySQL database for storing bookmarks and summaries
+# - Next.js application server
+# =============================================================================
+
 version: '3.8'
 
 services:
+  # ---------------------------------------------------------------------------
+  # MySQL Database Service
+  # ---------------------------------------------------------------------------
+  # Stores application data (bookmarks, AI summaries)
   mysql:
-    image: mysql:8.0-alpine
+    image: mysql:8.0
     container_name: hn-mysql
+    
+    # Environment variables for MySQL configuration
     environment:
-      MYSQL_ROOT_PASSWORD: ""
-      MYSQL_ALLOW_EMPTY_PASSWORD: "true"
+      # Root password (empty for development - NOT recommended for production)
+      MYSQL_ROOT_PASSWORD: rootpassword
+      # Database name to create on startup
       MYSQL_DATABASE: hackernews
+      # MySQL user for the application
+      MYSQL_USER: hackernews_user
+      # Password for the application user
+      MYSQL_PASSWORD: hackernews_pass
+    
+    # Port mapping: host:container
+    # Exposes MySQL on localhost:3306 for debugging/admin tools
     ports:
       - "3306:3306"
+    
+    # Persistent volume for database data
+    # Data persists even when container is stopped/removed
     volumes:
       - mysql_data:/var/lib/mysql
+    
+    # Health check to ensure MySQL is ready before starting the app
+    # The app service will wait for this to pass before starting
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpassword"]
       interval: 5s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 30s
+    
+    # Restart policy: always restart if container stops
+    restart: unless-stopped
 
+  # ---------------------------------------------------------------------------
+  # Next.js Application Service
+  # ---------------------------------------------------------------------------
+  # The main web application
   app:
+    # Build configuration
     build:
       context: .
       dockerfile: Dockerfile
+    
     container_name: hn-app
+    
+    # Port mapping: host:container
+    # Access the app at http://localhost:3000
     ports:
       - "3000:3000"
+    
+    # Environment variables for the application
+    # These override values in .env file
     environment:
-      - DATABASE_URL=mysql://root:@mysql:3306/hackernews
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      # Database connection URL
+      # Format: mysql://user:password@host:port/database
+      # Note: 'mysql' is the service name, Docker DNS resolves it
+      - DATABASE_URL=mysql://hackernews_user:hackernews_pass@mysql:3306/hackernews
+      - DATABASE_USER=hackernews_user
+      - DATABASE_PASSWORD=hackernews_pass
+      - DATABASE_NAME=hackernews
+      - DATABASE_HOST=mysql
+      - DATABASE_PORT=3306
+      
+      # Mistral AI API key for discussion summaries
+      # Replace with your actual key or use .env file
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-dzUQnfjmbH9WMp1NwGc47pkArE76cxyi}
+      
+      # Node environment
+      - NODE_ENV=production
+    
+    # Service dependencies
+    # Wait for MySQL to be healthy before starting the app
     depends_on:
       mysql:
         condition: service_healthy
-    command: sh -c "npx prisma db push && npm run start"
+    
+    # Startup command
+    # 1. Push database schema to MySQL (creates tables)
+    # 2. Start the Next.js production server
+    command: sh -c "npx prisma db push && node server.js"
+    
+    # Restart policy
+    restart: unless-stopped
 
+# =============================================================================
+# Named Volumes
+# =============================================================================
+# Persistent storage that survives container restarts/removals
 volumes:
+  # MySQL data volume
+  # Stores all database files (tables, indexes, etc.)
   mysql_data:
+    driver: local
